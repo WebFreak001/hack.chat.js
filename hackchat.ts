@@ -134,12 +134,12 @@ class HackChat extends events.EventEmitter {
             that.emit("nicknameTaken", session, time);
         });
 
-        session.on("invited", function(channel, time) {
-            that.emit("invited", session, channel, time);
+        session.on("invited", function(nick, channel, time) {
+            that.emit("invited", session, nick, channel, time);
         });
 
-        session.on("invitation", function(user, channel, time) {
-            that.emit("invitation", session, user, channel, time);
+        session.on("invitation", function(nick, channel, time) {
+            that.emit("invitation", session, nick, channel, time);
         });
 
         session.on("chat", function(nick, text, time, isAdmin) {
