@@ -20,6 +20,8 @@
         "!./node_modules/**/*"
     ],
     "files": [
-        "./hackchat.ts"
+        "./hackchat.ts",
+        "./typings/node/node.d.ts",
+        "./typings/ws/ws.d.ts"
     ]
 }

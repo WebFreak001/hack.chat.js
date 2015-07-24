@@ -10,58 +10,60 @@ var events = require('events');
 var inviteRegex = / invited you to \?[a-z0-9]{8}$/;
 var HackChatSession = (function (_super) {
     __extends(HackChatSession, _super);
-    function HackChatSession(channel, username) {
+    function HackChatSession(channel, username, password, options) {
+        if (options === void 0) { options = { server: "wss://hack.chat/chat-ws" }; }
         _super.call(this);
         this.channel = channel;
+        if (password !== undefined)
+            username += "#" + password;
         this.username = username;
-        var that = this;
-        this.ws = new WebSocket("wss://hack.chat/chat-ws");
+        this.ws = new WebSocket(options.server || "wss://hack.chat/chat-ws");
         this.ws.on("open", function () {
-            that.sendRaw({
+            this.sendRaw({
                 cmd: "join",
                 channel: channel,
                 nick: username
             });
-            that.emit("joining");
-        });
+            this.emit("joining");
+        }.bind(this));
         this.ws.on("message", function (data) {
             try {
                 var json = JSON.parse(data);
                 switch (String(json.cmd)) {
                     case "chat":
-                        return that.emit("chat", String(json.nick), String(json.text), json.time || 0, !!json.admin);
+                        return this.emit("chat", String(json.nick), String(json.text), json.time || 0, !!json.admin, String(json.trip));
                     case "info":
-                        that.emit("infoRaw", String(json.text), json.time || 0);
+                        this.emit("infoRaw", String(json.text), json.time || 0);
                         if (inviteRegex.test(json.text))
-                            return that.emit("invitation", String(json.text).substr(0, String(json.text).length - 25), String(json.text).substr(-8), json.time || 0);
+                            return this.emit("invitation", String(json.text).substr(0, String(json.text).length - 25), String(json.text).substr(-8), json.time || 0);
                         if (json.text.indexOf("You invited") == 0)
-                            return that.emit("invited", String(json.text).substr(12, String(json.text).length - 25), String(json.text).substr(-8), json.time || 0);
-                        return that.emit("info", String(json.text), json.time || 0);
+                            return this.emit("invited", String(json.text).substr(12, String(json.text).length - 25), String(json.text).substr(-8), json.time || 0);
+                        return this.emit("info", String(json.text), json.time || 0);
                     case "warn":
-                        that.emit("warnRaw", String(json.text), json.time || 0);
+                        this.emit("warnRaw", String(json.text), json.time || 0);
                         if (json.text.indexOf("IP is") != -1)
-                            return that.emit("ratelimit", json.time || 0);
+                            return this.emit("ratelimit", json.time || 0);
                         if (json.text === "Nickname invalid")
-                            return that.emit("nicknameInvalid", json.time || 0);
+                            return this.emit("nicknameInvalid", json.time || 0);
                         if (json.text === "Nickname taken")
-                            return that.emit("nicknameTaken", json.time || 0);
+                            return this.emit("nicknameTaken", json.time || 0);
                         if (json.text === "You have been banned. :(")
-                            return that.emit("banned", json.time || 0);
-                        return that.emit("warn", String(json.text), json.time || 0);
+                            return this.emit("banned", json.time || 0);
+                        return this.emit("warn", String(json.text), json.time || 0);
                     case "onlineSet":
-                        return that.emit(String(json.cmd), json.nicks || [], json.time || 0);
+                        return this.emit(String(json.cmd), json.nicks || [], json.time || 0);
                     case "onlineAdd":
                     case "onlineRemove":
-                        return that.emit(String(json.cmd), String(json.nick), json.time || 0);
+                        return this.emit(String(json.cmd), String(json.nick), json.time || 0);
                 }
             }
             catch (e) {
-                return that.emit("error", e);
+                return this.emit("error", e);
             }
-        });
+        }.bind(this));
         this.ws.on("close", function () {
-            that.emit("left");
-        });
+            this.emit("left");
+        }.bind(this));
     }
     HackChatSession.prototype.sendRaw = function (json) {
         try {
@@ -88,6 +90,11 @@ var HackChatSession = (function (_super) {
             nick: user
         });
     };
+    HackChatSession.prototype.ping = function () {
+        this.sendRaw({
+            cmd: "ping"
+        });
+    };
     HackChatSession.prototype.leave = function () {
         this.ws.close();
     };
@@ -99,60 +106,60 @@ var HackChat = (function (_super) {
         _super.apply(this, arguments);
         this.sessions = [];
     }
-    HackChat.prototype.join = function (channel, username) {
-        var session = new HackChatSession(channel, username);
-        var that = this;
+    HackChat.prototype.join = function (channel, username, password, options) {
+        if (options === void 0) { options = { server: "wss://hack.chat/chat-ws" }; }
+        var session = new HackChatSession(channel, username, password, options);
         session.on("joining", function () {
-            that.emit("joining", session);
-        });
+            this.emit("joining", session);
+        }.bind(this));
         session.on("left", function () {
-            that.emit("left", session);
-        });
+            this.emit("left", session);
+        }.bind(this));
         session.on("ratelimit", function (time) {
-            that.emit("ratelimit", session, time);
-        });
+            this.emit("ratelimit", session, time);
+        }.bind(this));
         session.on("banned", function (time) {
-            that.emit("banned", session, time);
-        });
+            this.emit("banned", session, time);
+        }.bind(this));
         session.on("nicknameInvalid", function (time) {
-            that.emit("nicknameInvalid", session, time);
-        });
+            this.emit("nicknameInvalid", session, time);
+        }.bind(this));
         session.on("nicknameTaken", function (time) {
-            that.emit("nicknameTaken", session, time);
-        });
+            this.emit("nicknameTaken", session, time);
+        }.bind(this));
         session.on("invited", function (nick, channel, time) {
-            that.emit("invited", session, nick, channel, time);
-        });
+            this.emit("invited", session, nick, channel, time);
+        }.bind(this));
         session.on("invitation", function (nick, channel, time) {
-            that.emit("invitation", session, nick, channel, time);
-        });
-        session.on("chat", function (nick, text, time, isAdmin) {
-            that.emit("chat", session, nick, text, time, isAdmin);
-        });
+            this.emit("invitation", session, nick, channel, time);
+        }.bind(this));
+        session.on("chat", function (nick, text, time, isAdmin, trip) {
+            this.emit("chat", session, nick, text, time, isAdmin, trip);
+        }.bind(this));
         session.on("info", function (text, time) {
-            that.emit("info", session, text, time);
-        });
+            this.emit("info", session, text, time);
+        }.bind(this));
         session.on("warn", function (text, time) {
-            that.emit("warn", session, text, time);
-        });
+            this.emit("warn", session, text, time);
+        }.bind(this));
         session.on("infoRaw", function (text, time) {
-            that.emit("infoRaw", session, text, time);
-        });
+            this.emit("infoRaw", session, text, time);
+        }.bind(this));
         session.on("warnRaw", function (text, time) {
-            that.emit("warnRaw", session, text, time);
-        });
+            this.emit("warnRaw", session, text, time);
+        }.bind(this));
         session.on("onlineSet", function (nicks, time) {
-            that.emit("onlineSet", session, nicks, time);
-        });
+            this.emit("onlineSet", session, nicks, time);
+        }.bind(this));
         session.on("onlineAdd", function (nick, time) {
-            that.emit("onlineAdd", session, nick, time);
-        });
+            this.emit("onlineAdd", session, nick, time);
+        }.bind(this));
         session.on("onlineRemove", function (nick, time) {
-            that.emit("onlineRemove", session, nick, time);
-        });
+            this.emit("onlineRemove", session, nick, time);
+        }.bind(this));
         session.on("error", function (err) {
-            that.emit("error", session, err);
-        });
+            this.emit("error", session, err);
+        }.bind(this));
         this.sessions.push(session);
         return session;
     };

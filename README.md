@@ -23,6 +23,60 @@ chat.on("chat", function(session, nick, text) {
 });
 ```
 
+## HackChat.Session methods
+
+### `new(channel: string, username: string, password?: string, options?: any = { server: "wss://hack.chat/chat-ws" })`
+
+**Description:** Constructs a new chat session and directly connects to it
+
+**Example:**
+```js
+var session = new HackChat.Session("programming", "My_Username", "password123", { server: "wss://custom-server.com/chat-ws" });
+```
+
+### `sendRaw(json: any)`
+
+**Description:** Sends a raw JSON packet
+
+**Example:**
+```js
+session.sendRaw({ cmd: "ping" });
+```
+
+### `sendMessage(message: string)`
+
+**Description:** Sends a chat message
+
+**Example:**
+```js
+session.sendMessage("Hi everybody");
+```
+
+### `invite(user: string)`
+
+**Description:** Invites a user to a random channel
+
+**Example:**
+```js
+session.on("invited", function(nick, channel, time) {
+    var invitedSession = chat.join(channel, "My_Username", "password123");
+    invitedSession.once("onlineAdd", function(nick, time)
+    {
+        invitedSession.sendMessage("Hi, " + nick);
+    });
+});
+
+session.invite("WebFreak");
+```
+
+### `ping()`
+
+**Description:** Sends a ping packet. Can be used to check IP limit.
+
+### `leave()`
+
+**Description:** Disconnects from the server, making `this` unusable
+
 ## HackChat.Session events
 
 **All HackChat events are the same as the HackChat.Session events with the exception that the session where it got emitted from is the first argument**
@@ -48,6 +102,7 @@ chat.on("chat", function(session, nick, text) {
 * `text` (String)
 * `time` (Number, Unix Time)
 * `isAdmin` (Boolean)
+* `trip` (String) - Hash from password
 
 ### `.on("info")`
 
