@@ -1,4 +1,7 @@
 # hack.chat.js
+
+[![npm package 1.1.0](https://badge.fury.io/js/hack-chat.svg)](https://www.npmjs.com/package/hack-chat)
+
 API wrapper for hack.chat using ws package
 
 ## Usage
